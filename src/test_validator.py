@@ -1,32 +1,42 @@
+import os
+import sys
 import unittest
-# Mengimport class dari file validator.py di atas
-from validator import MaterialValidator, ValidationError
-
+ 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+ 
+from validator import MaterialValidator as V, ValidationError
+ 
+ 
 class TestMaterialValidator(unittest.TestCase):
-    
-    def test_input_benar(self):
-        """Uji coba jika pengguna memasukkan data yang benar."""
-        hasil = MaterialValidator.validate_material_data("Semen Tiga Roda", 100)
-        self.assertEqual(hasil["name"], "Semen Tiga Roda")
-        self.assertEqual(hasil["quantity"], 100)
-
-    def test_nama_kosong(self):
-        """Uji coba jika nama material kosong (Harus memunculkan Error)."""
-        with self.assertRaises(ValidationError):
-            MaterialValidator.validate_material_data("", 10)
-
-    def test_jumlah_minus_atau_nol(self):
-        """Uji coba jika kuantitas kurang dari atau sama dengan 0 (Harus memunculkan Error)."""
-        with self.assertRaises(ValidationError):
-            MaterialValidator.validate_material_data("Besi", 0)
-        with self.assertRaises(ValidationError):
-            MaterialValidator.validate_material_data("Besi", -5)
-
-    def test_tipe_data_salah(self):
-        """Uji coba jika jumlah diisi teks bukan angka bulat."""
-        with self.assertRaises(ValidationError):
-            MaterialValidator.validate_material_data("Baja", "sepuluh")
-
-
+    def test_input_benar_dan_dibersihkan(self):
+        hasil = V.validate_material_data(" BJ-01 ", " Baja H-Beam ", 12.5)
+        self.assertEqual(hasil, {"kode": "BJ-01", "nama": "Baja H-Beam", "berat": 12.5})
+ 
+    def test_kode_salah(self):
+        for kode in ["", "   ", None, 123]:
+            with self.assertRaises(ValidationError):
+                V.validate_material_data(kode, "Baja", 10)
+ 
+    def test_nama_salah(self):
+        for nama in ["", "   ", None, 5]:
+            with self.assertRaises(ValidationError):
+                V.validate_material_data("BJ-01", nama, 10)
+ 
+    def test_berat_salah(self):
+        for berat in [0, -5, "sepuluh", None, True, float("nan"), float("inf")]:
+            with self.assertRaises(ValidationError):
+                V.validate_material_data("BJ-01", "Baja", berat)
+ 
+    def test_permintaan(self):
+        self.assertEqual(V.validate_request_data(" BJ-01 "), "BJ-01")
+        with self.assertRaises(ValidationError) as e:
+            V.validate_request_data("")
+        self.assertIn("Permintaan material gagal", str(e.exception))
+ 
+    def test_validation_error_adalah_value_error(self):
+        self.assertTrue(issubclass(ValidationError, ValueError))
+ 
+ 
 if __name__ == "__main__":
     unittest.main()
+ 
