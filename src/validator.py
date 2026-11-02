@@ -1,58 +1,34 @@
-class ValidationError(Exception):
-    """Exception khusus jika data input material salah."""
-    pass
-
-
+import math
+ 
+ 
+class ValidationError(ValueError):
+    """Data input material atau permintaan tidak valid."""
+ 
+ 
 class MaterialValidator:
     @staticmethod
-    def validate_material_data(name: str, quantity: int) -> dict:
-        """
-        Referensi Validasi untuk Input Material Baru (Masuk Gudang).
-        Digunakan oleh Anggota 3 sebelum dimasukkan ke Stack.
-        """
-        # 1. Cek apakah nama kosong atau bukan teks
-        if not name or not isinstance(name, str):
+    def _cek_kode(kode):
+        if not isinstance(kode, str) or not kode.strip():
+            raise ValidationError("Kode material tidak boleh kosong dan harus berupa teks.")
+        return kode.strip()
+ 
+    @staticmethod
+    def validate_material_data(kode, nama, berat):
+        """Validasi material baru (sebelum masuk Stack). Mengembalikan data bersih."""
+        kode = MaterialValidator._cek_kode(kode)
+        if not isinstance(nama, str) or not nama.strip():
             raise ValidationError("Nama material tidak boleh kosong dan harus berupa teks.")
-        
-        clean_name = name.strip()
-        if len(clean_name) == 0:
-            raise ValidationError("Nama material tidak boleh hanya berisi spasi.")
-
-        # 2. Cek apakah jumlah material valid (harus angka positif)
-        if quantity is None:
-            raise ValidationError("Jumlah material harus diisi.")
-            
-        if not isinstance(quantity, int) or isinstance(quantity, bool):
-            raise ValidationError("Jumlah material harus berupa angka bulat yang valid.")
-            
-        if quantity <= 0:
-            raise ValidationError("Jumlah material harus lebih besar dari 0.")
-
-        # Jika lolos semua, kembalikan data bersih berformat Dictionary
-        return {
-            "name": clean_name,
-            "quantity": quantity
-        }
-
+        if isinstance(berat, bool) or not isinstance(berat, (int, float)):
+            raise ValidationError("Berat material harus berupa angka.")
+        if not math.isfinite(berat) or berat <= 0:
+            raise ValidationError("Berat material harus angka lebih besar dari 0.")
+        return {"kode": kode, "nama": nama.strip(), "berat": berat}
+ 
     @staticmethod
-    def validate_request_data(name: str, quantity: int) -> dict:
-        """
-        Referensi Validasi untuk Permintaan Material (Keluar Gudang).
-        Digunakan oleh Anggota 3 sebelum dimasukkan ke Queue.
-        """
+    def validate_request_data(kode):
+        """Validasi permintaan material (sebelum masuk Queue). Mengembalikan kode bersih."""
         try:
-            return MaterialValidator.validate_material_data(name, quantity)
+            return MaterialValidator._cek_kode(kode)
         except ValidationError as e:
-            raise ValidationError(f"Permintaan material gagal: {str(e)}")
-
-    @staticmethod
-    def safe_validate(name: str, quantity: int) -> tuple[bool, str | dict]:
-        """
-        Fungsi Penanganan Error Aman (Supaya program utama Anggota 6 tidak mendadak berhenti/crash).
-        Mengembalikan: (Status_Sukses, Data_Bersih_Atau_Pesan_Error)
-        """
-        try:
-            data = MaterialValidator.validate_material_data(name, quantity)
-            return True, data
-        except ValidationError as e:
-            return False, str(e)
+            raise ValidationError(f"Permintaan material gagal: {e}")
+ 
