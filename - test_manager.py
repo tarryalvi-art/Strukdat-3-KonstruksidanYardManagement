@@ -1,77 +1,90 @@
-from manager import StackManager
-
-
-def test_tambah_dan_jumlah():
-    m = StackManager()
-    m.tambah(1)
-    m.tambah(2)
-    assert m.jumlah() == 2
-    assert m.lihat_atas() == 2
-
-
-def test_hapus():
-    m = StackManager()
-    m.tambah("A")
-    m.tambah("B")
-    m.hapus()
-    assert m.lihat_atas() == "A"
-    assert m.jumlah() == 1
-
-
-def test_hapus_stack_kosong():
-    m = StackManager()
-    assert m.hapus() == "Stack kosong, tidak ada yang dihapus."
-    assert m.lihat_atas() is None
-
-
-def test_cari():
-    m = StackManager()
-    m.tambah(10)
-    m.tambah(20)
-    assert m.cari(10) is True
-    assert m.cari(99) is False
-
-
-def test_balik():
-    m = StackManager()
-    for x in [1, 2, 3]:
-        m.tambah(x)
-    # sebelum: atas 3,2,1 -> sesudah: atas 1,2,3
-    m.balik()
-    assert m.stack.to_list() == [1, 2, 3]
-
-
-def test_kosongkan():
-    m = StackManager()
-    m.tambah(1)
-    m.kosongkan()
-    assert m.jumlah() == 0
-    assert m.tampilkan() == "Stack kosong."
-
-
-def test_tampilkan():
-    m = StackManager()
-    m.tambah("A")
-    m.tambah("B")
-    assert m.tampilkan() == "Atas -> B | A <- Bawah"
-
-
+import os
+import sys
+import unittest
+ 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+ 
+from manager import YardManager, MaterialBlokirError
+from stack import StackEmptyError, StackFullError
+from yard_queue import QueueEmptyError
+ 
+ 
+class FakeLogger:
+    def __init__(self):
+        self.pesan = []
+ 
+    def catat(self, pesan):
+        self.pesan.append(pesan)
+ 
+ 
+class FakeValidator:
+    def validasi_nama(self, nama):
+        if not nama or not nama.strip():
+            raise ValueError("Nama material tidak boleh kosong.")
+        return nama.strip()
+ 
+ 
+class TestYardManager(unittest.TestCase):
+    def setUp(self):
+        self.log = FakeLogger()
+        self.m = YardManager(logger=self.log, validator=FakeValidator())
+ 
+    def test_tambah_dan_ambil_lifo(self):
+        self.m.tambah_material("Baja")
+        self.m.tambah_material("Pipa")
+        self.assertEqual(self.m.lihat_tumpukan(), ["Pipa", "Baja"])
+        self.assertEqual(self.m.ambil_material(), "Pipa")
+        self.assertEqual(self.log.pesan, ["PUSH: Baja", "PUSH: Pipa", "POP: Pipa"])
+ 
+    def test_ambil_kosong_dan_overflow(self):
+        with self.assertRaises(StackEmptyError):
+            self.m.ambil_material()
+        kecil = YardManager(kapasitas=1)
+        kecil.tambah_material("A")
+        with self.assertRaises(StackFullError):
+            kecil.tambah_material("B")
+ 
+    def test_validator_menolak_input_salah(self):
+        with self.assertRaises(ValueError):
+            self.m.tambah_material("  ")
+        with self.assertRaises(ValueError):
+            self.m.ajukan_permintaan("")
+        self.assertEqual(self.m.lihat_tumpukan(), [])
+        self.assertEqual(self.m.lihat_antrean(), [])
+ 
+    def test_proses_permintaan_fifo(self):
+        self.m.tambah_material("Baja")
+        self.m.tambah_material("Pipa")
+        self.m.ajukan_permintaan("Pipa")
+        self.m.ajukan_permintaan("Baja")
+        self.assertEqual(self.m.proses_permintaan(), "Pipa")
+        self.assertEqual(self.m.proses_permintaan(), "Baja")
+        self.assertEqual(self.m.lihat_tumpukan(), [])
+ 
+    def test_material_terblokir(self):
+        for x in ["Baja", "Kontainer", "Pipa"]:
+            self.m.tambah_material(x)
+        self.m.ajukan_permintaan("Baja")
+        with self.assertRaises(MaterialBlokirError) as e:
+            self.m.proses_permintaan()
+        self.assertIn("Pipa, Kontainer", str(e.exception))
+        self.assertEqual(self.m.lihat_antrean(), ["Baja"])  # tetap di antrean
+        self.assertEqual(len(self.m.lihat_tumpukan()), 3)   # stack tidak berubah
+        self.m.ambil_material()
+        self.m.ambil_material()
+        self.assertEqual(self.m.proses_permintaan(), "Baja")
+ 
+    def test_material_tidak_tersedia(self):
+        self.m.ajukan_permintaan("Beton")
+        with self.assertRaises(ValueError):
+            self.m.proses_permintaan()
+        self.assertEqual(self.m.lihat_antrean(), ["Beton"])
+ 
+    def test_antrean_kosong(self):
+        with self.assertRaises(QueueEmptyError):
+            self.m.proses_permintaan()
+ 
+ 
 if __name__ == "__main__":
-    daftar_test = [
-        test_tambah_dan_jumlah,
-        test_hapus,
-        test_hapus_stack_kosong,
-        test_cari,
-        test_balik,
-        test_kosongkan,
-        test_tampilkan,
-    ]
-    lolos = 0
-    for fungsi in daftar_test:
-        try:
-            fungsi()
-            print(f"[LOLOS] {fungsi.__name__}")
-            lolos += 1
-        except AssertionError:
-            print(f"[GAGAL] {fungsi.__name__}")
-    print(f"\n{lolos}/{len(daftar_test)} test lolos")
+    unittest.main()
+ 
