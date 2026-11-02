@@ -1,66 +1,67 @@
-from __future__ import annotations
-
-from typing import Any, Iterator, Optional
+from typing import Any, Optional
 
 from node import Node
 
 
 class StackEmptyError(Exception):
-    """Error saat pop/peek dilakukan pada stack kosong."""
+    """Underflow: pop/peek pada stack kosong."""
+
+
+class StackFullError(Exception):
+    """Overflow: push pada stack penuh."""
 
 
 class Stack:
-    def __init__(self) -> None:
-        self._top: Optional[Node] = None
-        self._size: int = 0
+    def __init__(self, capacity: Optional[int] = None) -> None:
+        if capacity is not None and capacity <= 0:
+            raise ValueError("Kapasitas harus lebih dari 0.")
+        self._top = None
+        self._size = 0
+        self._capacity = capacity
 
     def push(self, item: Any) -> None:
-        new_node = Node(item)
-        new_node.next = self._top
-        self._top = new_node
+        if self.is_full():
+            raise StackFullError(f"Stack penuh (kapasitas {self._capacity}).")
+        self._top = Node(item, self._top)
         self._size += 1
 
     def pop(self) -> Any:
         if self.is_empty():
             raise StackEmptyError("Stack kosong, tidak bisa pop.")
-        popped = self._top
-        self._top = popped.next
-        popped.next = None
+        node = self._top
+        self._top = node.next
         self._size -= 1
-        return popped.data
+        return node.data
 
     def peek(self) -> Any:
         if self.is_empty():
-            raise StackEmptyError("Stack kosong, tidak ada item untuk peek.")
+            raise StackEmptyError("Stack kosong, tidak bisa peek.")
         return self._top.data
 
     def is_empty(self) -> bool:
         return self._top is None
 
+    def is_full(self) -> bool:
+        return self._capacity is not None and self._size >= self._capacity
+
     def size(self) -> int:
         return self._size
 
-    def clear(self) -> None:
-        self._top = None
-        self._size = 0
+    def items_above(self, item: Any) -> list:
+        """Item di atas `item` (dari paling atas); kosong = tidak terblokir."""
+        hasil, cur = [], self._top
+        while cur:
+            if cur.data == item:
+                return hasil
+            hasil.append(cur.data)
+            cur = cur.next
+        raise ValueError(f"{item!r} tidak ada di stack.")
 
-    def to_list(self) -> list:
-        hasil = []
-        current = self._top
-        while current is not None:
-            hasil.append(current.data)
-            current = current.next
-        return hasil
+    def __iter__(self):
+        cur = self._top
+        while cur:
+            yield cur.data
+            cur = cur.next
 
     def __len__(self) -> int:
         return self._size
-
-    def __iter__(self) -> Iterator[Any]:
-        current = self._top
-        while current is not None:
-            yield current.data
-            current = current.next
-
-    def __repr__(self) -> str:
-        return f"Stack(size={self._size}, items={self.to_list()!r})"
-    
