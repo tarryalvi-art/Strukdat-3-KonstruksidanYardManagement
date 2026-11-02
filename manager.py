@@ -40,7 +40,8 @@ class YardManager:
  
     def tambah_material(self, kode, nama, berat):
         if self.validator is not None:
-            self._coba(self.validator.validasi_material, kode, nama, berat)
+            d = self._coba(self.validator.validate_material_data, kode, nama, berat)
+            kode, nama, berat = d["kode"], d["nama"], d["berat"]
         m = Material(kode, nama, berat)
         self._coba(self.stack.push, m)
         self._log("catat_push", kode, nama, berat)
@@ -53,7 +54,7 @@ class YardManager:
  
     def ajukan_permintaan(self, kode):
         if self.validator is not None:
-            self._coba(self.validator.validasi_permintaan, kode)
+            kode = self._coba(self.validator.validate_request_data, kode)
         self._coba(self.antrean.enqueue, kode)
         self._log("catat_permintaan", kode)
         return kode
