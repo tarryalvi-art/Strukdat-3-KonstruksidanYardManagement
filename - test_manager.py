@@ -6,24 +6,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
  
 from logger import Logger
 from manager import YardManager, MaterialBlokirError
+from validator import MaterialValidator
 from stack import StackEmptyError, StackFullError
 from yard_queue import QueueEmptyError
- 
- 
-class FakeValidator:  # ganti dengan Validator Anggota 5 setelah API disepakati
-    def validasi_material(self, kode, nama, berat):
-        if not kode or not nama or berat <= 0:
-            raise ValueError("Data material tidak valid.")
- 
-    def validasi_permintaan(self, kode):
-        if not kode:
-            raise ValueError("Kode permintaan kosong.")
  
  
 class TestYardManager(unittest.TestCase):
     def setUp(self):
         self.log = Logger()
-        self.m = YardManager(logger=self.log, validator=FakeValidator())
+        self.m = YardManager(logger=self.log, validator=MaterialValidator)
  
     def kategori(self):
         return [e[1] for e in self.log.get_entries()]
